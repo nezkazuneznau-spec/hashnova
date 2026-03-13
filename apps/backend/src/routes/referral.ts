@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { prisma } from '../index';
 import { telegramAuthMiddleware } from '../middleware/telegram';
 
-export async function referralRoutes(app: FastifyInstance) {
+export default async function referralRoutes(app: FastifyInstance) {
   app.get('/status', { preHandler: telegramAuthMiddleware }, async (request, reply) => {
     const { userId } = request.user as { userId: number };
     const user = await prisma.user.findUnique({ where: { id: userId } });

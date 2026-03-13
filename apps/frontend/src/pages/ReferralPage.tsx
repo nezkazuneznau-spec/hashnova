@@ -1,2 +1,1 @@
-export { default } from './OtherPages';
-export { LeaderboardPage as default } from './OtherPages';
+export { ReferralPage as default } from './OtherPages';
