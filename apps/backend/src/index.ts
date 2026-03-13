@@ -8,7 +8,7 @@ import { PrismaClient } from '@prisma/client';
 import authRoutes from './routes/auth';
 import minerRoutes from './routes/miner';
 import shopRoutes from './routes/shop';
-import { referralRoutes, leaderboardRoutes } from './routes/referral';
+import referralRoutes, { leaderboardRoutes } from './routes/referral';
 import dailyRoutes from './routes/daily';
 import tonRoutes from './routes/ton';
 import adminRoutes from './routes/admin';
