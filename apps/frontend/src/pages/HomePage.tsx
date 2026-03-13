@@ -1,17 +1,22 @@
 import { useStore } from '../store';
 import { minerAPI, dailyAPI } from '../api';
 import { DAILY_REWARDS, xpForLevel } from '../shared';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function HomePage() {
-  const { balance, incomePerHour, pendingIncome, farms, level, xp, setBalance, setPendingIncome } = useStore();
+  const { balance, incomePerHour, pendingIncome, farms, level, xp, setBalance, setPendingIncome, setLevel } = useStore();
   const [claiming, setClaiming] = useState(false);
   const [toast, setToast] = useState('');
+  const [dailyStatus, setDailyStatus] = useState<{ canClaim: boolean; streak: number; nextReward: number } | null>(null);
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(''), 2500);
-  };
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 2500); };
+
+  // Load daily status
+  useEffect(() => {
+    dailyAPI.getStatus()
+      .then((r) => setDailyStatus(r.data))
+      .catch(() => setDailyStatus({ canClaim: false, streak: 0, nextReward: DAILY_REWARDS[0] }));
+  }, []);
 
   const handleClaim = async () => {
     if (claiming || pendingIncome < 1) return;
@@ -20,6 +25,7 @@ export default function HomePage() {
       const res = await minerAPI.claim();
       setBalance(res.data.newBalance);
       setPendingIncome(0);
+      if (res.data.levelUp) setLevel(res.data.newLevel, res.data.newXp);
       showToast(`🎉 +${Math.floor(res.data.claimed).toLocaleString('ru-RU')} HNV!`);
     } catch (e: any) {
       showToast('⚠️ ' + (e.response?.data?.error || 'Ошибка'));
@@ -29,9 +35,11 @@ export default function HomePage() {
   };
 
   const handleDaily = async () => {
+    if (!dailyStatus?.canClaim) return;
     try {
       const res = await dailyAPI.claim();
       setBalance(res.data.newBalance);
+      setDailyStatus({ canClaim: false, streak: res.data.newStreak, nextReward: DAILY_REWARDS[Math.min(res.data.newStreak, DAILY_REWARDS.length - 1)] });
       showToast(`🎁 +${res.data.reward} HNV! День ${res.data.newStreak}/7`);
     } catch (e: any) {
       showToast('⚠️ ' + (e.response?.data?.error || 'Уже получено'));
@@ -40,25 +48,23 @@ export default function HomePage() {
 
   const xpRequired = xpForLevel(level + 1);
   const xpPct = Math.min((xp / xpRequired) * 100, 100);
+  const streak = dailyStatus?.streak ?? 0;
 
   return (
     <div style={{ padding: '12px 14px 100px' }}>
-      {/* Toast */}
       {toast && (
         <div style={{ position: 'fixed', top: 65, left: '50%', transform: 'translateX(-50%)', background: 'rgba(16,185,129,.92)', color: '#fff', padding: '9px 20px', borderRadius: 22, fontSize: 12, fontWeight: 700, zIndex: 999, whiteSpace: 'nowrap' }}>
           {toast}
         </div>
       )}
 
-      {/* Balance card */}
-      <div style={{ background: 'linear-gradient(135deg,rgba(59,130,246,.07),rgba(139,92,246,.07))', border: '1px solid rgba(59,130,246,.18)', borderRadius: 20, padding: '20px 18px 17px', marginBottom: 12, position: 'relative', overflow: 'hidden' }}>
+      {/* Balance */}
+      <div style={{ background: 'linear-gradient(135deg,rgba(59,130,246,.07),rgba(139,92,246,.07))', border: '1px solid rgba(59,130,246,.18)', borderRadius: 20, padding: '20px 18px 17px', marginBottom: 12 }}>
         <div style={{ fontSize: 9, color: '#475569', letterSpacing: 3, textTransform: 'uppercase', fontFamily: 'Space Mono,monospace', marginBottom: 7 }}>⛏ HASHNOVA BALANCE</div>
         <div style={{ fontFamily: 'Orbitron,sans-serif', fontSize: 36, fontWeight: 900, background: 'linear-gradient(90deg,#F59E0B,#FDE68A)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
           {Math.floor(balance).toLocaleString('ru-RU')}
         </div>
-        <div style={{ fontSize: 11, color: '#475569', fontFamily: 'Space Mono,monospace', marginTop: 4 }}>
-          ≈ ${(Math.floor(balance) * 0.0001).toFixed(2)} USD
-        </div>
+        <div style={{ fontSize: 11, color: '#475569', fontFamily: 'Space Mono,monospace', marginTop: 4 }}>≈ ${(Math.floor(balance) * 0.0001).toFixed(2)} USD</div>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 11, background: 'rgba(16,185,129,.08)', border: '1px solid rgba(16,185,129,.2)', borderRadius: 18, padding: '5px 13px' }}>
           <span style={{ color: '#10B981', fontFamily: 'Space Mono,monospace', fontSize: 11 }}>▲ +{incomePerHour.toLocaleString('ru-RU')} HNV/ч</span>
         </div>
@@ -76,22 +82,41 @@ export default function HomePage() {
         {claiming ? '⏳ СБОР...' : '⚡ СОБРАТЬ МОНЕТЫ'}
       </button>
 
-      {/* Daily bonus */}
-      <div style={{ fontSize: 9, color: '#475569', letterSpacing: 3, textTransform: 'uppercase', fontFamily: 'Space Mono,monospace', marginBottom: 8 }}>🎁 Ежедневная награда</div>
+      {/* Daily rewards — динамические на основе streak */}
+      <div style={{ fontSize: 9, color: '#475569', letterSpacing: 3, textTransform: 'uppercase', fontFamily: 'Space Mono,monospace', marginBottom: 8 }}>
+        🎁 Ежедневная награда {dailyStatus ? `• Стрик: ${streak}/7` : ''}
+      </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 5, marginBottom: 15 }}>
-        {DAILY_REWARDS.map((reward, i) => (
-          <div
-            key={i}
-            onClick={i === 3 ? handleDaily : undefined}
-            style={{ borderRadius: 9, padding: '7px 2px', textAlign: 'center', background: i < 3 ? 'rgba(16,185,129,.07)' : i === 3 ? 'rgba(245,158,11,.1)' : 'rgba(20,20,42,.7)', border: `1px solid ${i < 3 ? 'rgba(16,185,129,.3)' : i === 3 ? '#F59E0B' : 'rgba(42,42,72,.8)'}`, cursor: i === 3 ? 'pointer' : 'default' }}
-          >
-            <div style={{ fontSize: 7, color: '#475569', fontFamily: 'Space Mono,monospace' }}>{i + 1}</div>
-            <div style={{ fontSize: 14, margin: '2px 0' }}>{i < 3 ? '✅' : i === 3 ? '🎁' : '🔒'}</div>
-            <div style={{ fontSize: 7, fontWeight: 700, color: i < 3 ? '#10B981' : i === 3 ? '#F59E0B' : '#475569' }}>
-              {reward >= 1000 ? `${reward / 1000}K` : reward}
+        {DAILY_REWARDS.map((reward, i) => {
+          // i < streak  → уже получено (зелёное)
+          // i === streak → сегодняшний день (активный)
+          // i > streak  → будущий (серый)
+          const done = i < streak;
+          const active = i === streak;
+          const canClick = active && dailyStatus?.canClaim;
+
+          return (
+            <div
+              key={i}
+              onClick={canClick ? handleDaily : undefined}
+              style={{
+                borderRadius: 9, padding: '7px 2px', textAlign: 'center',
+                background: done ? 'rgba(16,185,129,.07)' : active ? 'rgba(245,158,11,.1)' : 'rgba(20,20,42,.7)',
+                border: `1px solid ${done ? 'rgba(16,185,129,.3)' : active ? '#F59E0B' : 'rgba(42,42,72,.8)'}`,
+                cursor: canClick ? 'pointer' : 'default',
+                opacity: !done && !active ? 0.5 : 1,
+              }}
+            >
+              <div style={{ fontSize: 7, color: '#475569', fontFamily: 'Space Mono,monospace' }}>{i + 1}</div>
+              <div style={{ fontSize: 14, margin: '2px 0' }}>
+                {done ? '✅' : active && !dailyStatus?.canClaim ? '⏳' : active ? '🎁' : '🔒'}
+              </div>
+              <div style={{ fontSize: 7, fontWeight: 700, color: done ? '#10B981' : active ? '#F59E0B' : '#475569' }}>
+                {reward >= 1000 ? `${reward / 1000}K` : reward}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* XP bar */}
@@ -110,7 +135,7 @@ export default function HomePage() {
       {farms.length === 0 && (
         <div style={{ textAlign: 'center', color: '#475569', fontSize: 12, padding: '20px 0' }}>Нет ферм — купи в Магазине!</div>
       )}
-      {farms.map((farm) => (
+      {farms.map((farm: any) => (
         <div key={farm.id} style={{ background: 'rgba(20,20,42,.8)', border: '1px solid rgba(42,42,72,.8)', borderRadius: 14, padding: '12px 14px', marginBottom: 9, display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ width: 46, height: 46, borderRadius: 12, background: 'rgba(139,92,246,.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>
             {farm.farmType === 'GPU_RIG' ? '🖥️' : farm.farmType === 'ASIC_MINER' ? '⚡' : farm.farmType === 'SERVER_FARM' ? '🏭' : '🚀'}

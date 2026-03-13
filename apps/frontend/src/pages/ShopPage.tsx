@@ -6,12 +6,18 @@ export default function ShopPage() {
   const { setBalance, setIncomePerHour } = useStore();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [toast, setToast] = useState('');
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 2500); };
 
   useEffect(() => {
-    shopAPI.getItems().then((r) => { setItems(r.data.items); setLoading(false); });
+    shopAPI.getItems()
+      .then((r) => { setItems(r.data.items); setLoading(false); })
+      .catch((e) => {
+        setError('Не удалось загрузить магазин. ' + (e.response?.data?.error || 'Проверь подключение.'));
+        setLoading(false);
+      });
   }, []);
 
   const handleBuy = async (farmType: string, name: string) => {
@@ -22,17 +28,34 @@ export default function ShopPage() {
       setItems((prev) =>
         prev.map((i) =>
           i.type === farmType
-            ? { ...i, owned: true, currentLevel: res.data.farm.level, currentIncome: res.data.farm.incomePerHour }
+            ? { ...i, owned: true, currentLevel: res.data.farm.level, currentIncome: res.data.farm.incomePerHour, upgradeCost: res.data.nextUpgradeCost ?? i.upgradeCost }
             : i
         )
       );
-      showToast(`⚡ ${name} улучшена!`);
+      showToast(`⚡ ${name} улучшена до LVL ${res.data.farm.level}!`);
     } catch (e: any) {
       showToast('⚠️ ' + (e.response?.data?.error || 'Ошибка'));
     }
   };
 
-  if (loading) return <div style={{ padding: 20, color: '#475569', textAlign: 'center' }}>Загрузка...</div>;
+  if (loading) return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 200, gap: 12 }}>
+      <div style={{ width: 36, height: 36, border: '3px solid rgba(59,130,246,.2)', borderTop: '3px solid #3B82F6', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+      <div style={{ color: '#475569', fontSize: 12 }}>Загрузка магазина...</div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+    </div>
+  );
+
+  if (error) return (
+    <div style={{ padding: 20, textAlign: 'center' }}>
+      <div style={{ fontSize: 32, marginBottom: 12 }}>⚠️</div>
+      <div style={{ color: '#EF4444', fontSize: 13, marginBottom: 16 }}>{error}</div>
+      <button onClick={() => { setError(''); setLoading(true); shopAPI.getItems().then((r) => { setItems(r.data.items); setLoading(false); }).catch(() => setLoading(false)); }}
+        style={{ padding: '9px 20px', background: '#3B82F6', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+        Попробовать снова
+      </button>
+    </div>
+  );
 
   return (
     <div style={{ padding: '12px 14px 100px' }}>
@@ -58,7 +81,9 @@ export default function ShopPage() {
             <button
               onClick={() => item.isUnlocked && item.canAfford && handleBuy(item.type, item.name)}
               style={{
-                padding: '7px 14px', borderRadius: 9, fontSize: 10, fontWeight: 700, cursor: item.isUnlocked && item.canAfford ? 'pointer' : 'not-allowed', fontFamily: 'Orbitron,sans-serif', border: 'none',
+                padding: '7px 14px', borderRadius: 9, fontSize: 10, fontWeight: 700,
+                cursor: item.isUnlocked && item.canAfford ? 'pointer' : 'not-allowed',
+                fontFamily: 'Orbitron,sans-serif', border: 'none',
                 background: !item.isUnlocked ? 'rgba(60,60,80,.4)' : item.canAfford ? 'linear-gradient(135deg,#3B82F6,#8B5CF6)' : 'rgba(60,60,80,.4)',
                 color: item.canAfford && item.isUnlocked ? '#fff' : '#475569',
               }}
@@ -70,7 +95,6 @@ export default function ShopPage() {
         </div>
       ))}
 
-      {/* TON Boosters */}
       <div style={{ fontSize: 9, color: '#475569', letterSpacing: 3, textTransform: 'uppercase', fontFamily: 'Space Mono,monospace', marginBottom: 8, marginTop: 8 }}>💎 TON Бустеры</div>
       <div style={{ background: 'linear-gradient(135deg,rgba(6,182,212,.06),rgba(59,130,246,.06))', border: '1px solid rgba(6,182,212,.2)', borderRadius: 14, padding: 16 }}>
         {[
