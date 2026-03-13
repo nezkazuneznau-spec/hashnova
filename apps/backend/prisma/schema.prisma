@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              Int      @id @default(autoincrement())
+  telegramId      String   @unique
+  username        String?
+  firstName       String
+  lastName        String?
+  balance         Float    @default(0)
+  totalEarned     Float    @default(0)
+  incomePerHour   Float    @default(0)
+  level           Int      @default(1)
+  xp              Float    @default(0)
+  referralCode    String   @unique
+  referredBy      String?
+  lastOnline      DateTime @default(now())
+  lastClaim       DateTime @default(now())
+  dailyStreak     Int      @default(0)
+  lastDailyBonus  DateTime?
+  tonAddress      String?
+  totalDeposited  Float    @default(0)
+  isBlocked       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  farms           Farm[]
+  transactions    TonTransaction[]
+  referrals       User[]   @relation("Referrals")
+  referrer        User?    @relation("Referrals", fields: [referredBy], references: [referralCode])
+
+  @@index([telegramId])
+  @@index([referralCode])
+}
+
+model Farm {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  farmType     String
+  level        Int      @default(1)
+  incomePerHour Float   @default(0)
+  purchasedAt  DateTime @default(now())
+  lastUpgrade  DateTime?
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, farmType])
+  @@index([userId])
+}
+
+model TonTransaction {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  type      String   // 'deposit' | 'withdrawal'
+  amount    Float
+  hnvAmount Float    @default(0)
+  status    String   @default("pending")  // pending | completed | rejected
+  txHash    String?
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+}
