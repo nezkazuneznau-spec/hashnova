@@ -1,5 +1,5 @@
 import { useStore } from '../store';
-import { minerAPI, dailyAPI } from '../api';
+import { minerAPI, dailyAPI } from '../api/index';
 import { DAILY_REWARDS, xpForLevel } from '../shared';
 import { useState, useEffect } from 'react';
 

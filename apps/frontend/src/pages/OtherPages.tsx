@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { referralAPI, leaderboardAPI, tonAPI } from '../api';
+import { referralAPI, leaderboardAPI, tonAPI, getErrMsg } from '../api/index';
 import { useStore } from '../store';
 
 // ─── SHARED HELPERS ────────────────────────────────────────────────────────
@@ -40,7 +40,7 @@ export function ReferralPage() {
     setState('loading');
     referralAPI.getStatus()
       .then(r => { setData(r.data ?? {}); setState('ok'); })
-      .catch(e => { setErrMsg(String(e?.response?.data?.error ?? e?.message ?? 'Ошибка')); setState('error'); });
+      .catch(e => { setErrMsg(getErrMsg(e)); setState('error'); });
   }
   useEffect(load, []);
 
@@ -196,7 +196,7 @@ export function ProfilePage() {
       showToast('✅ Кошелёк подключён!');
       refreshTon();
     } catch(e:any) {
-      showToast('⚠️ ' + String(e?.response?.data?.error ?? e?.message ?? 'Ошибка'));
+      showToast('⚠️ ' + getErrMsg(e));
     } finally {
       setBusy('');
     }
@@ -213,7 +213,7 @@ export function ProfilePage() {
       setWdAmt('');
       refreshTon();
     } catch(e:any) {
-      showToast('⚠️ ' + String(e?.response?.data?.error ?? e?.message ?? 'Ошибка'));
+      showToast('⚠️ ' + getErrMsg(e));
     } finally {
       setBusy('');
     }
@@ -230,7 +230,7 @@ export function ProfilePage() {
       setDepAmt('');
       refreshTon();
     } catch(e:any) {
-      showToast('⚠️ ' + String(e?.response?.data?.error ?? e?.message ?? 'Ошибка'));
+      showToast('⚠️ ' + getErrMsg(e));
     } finally {
       setBusy('');
     }
