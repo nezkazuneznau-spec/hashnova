@@ -18,15 +18,12 @@ import { startBot } from './bot';
 
 export const prisma = new PrismaClient();
 
-const app = Fastify({ logger: process.env.NODE_ENV !== 'production' });
+const app = Fastify({ logger: true });
 
 async function main() {
+  // Plugins — must be awaited
   await app.register(cors, {
-    origin: [
-      process.env.FRONTEND_URL || 'http://localhost:5173',
-      /\.railway\.app$/,
-      /\.vercel\.app$/,
-    ],
+    origin: true,
     credentials: true,
   });
 
@@ -34,22 +31,29 @@ async function main() {
     secret: process.env.JWT_SECRET || 'fallback-secret-change-in-production',
   });
 
-  await app.register(rateLimit, { max: 100, timeWindow: '1 minute' });
+  await app.register(rateLimit, { max: 200, timeWindow: '1 minute' });
 
-  app.register(authRoutes,        { prefix: '/api/auth' });
-  app.register(minerRoutes,       { prefix: '/api/miner' });
-  app.register(shopRoutes,        { prefix: '/api/shop' });
-  app.register(referralRoutes,    { prefix: '/api/referral' });
-  app.register(leaderboardRoutes, { prefix: '/api/leaderboard' });
-  app.register(dailyRoutes,       { prefix: '/api/daily' });
-  app.register(tonRoutes,         { prefix: '/api/ton' });
-  app.register(adminRoutes,       { prefix: '/api/admin' });
+  // Routes — must be awaited so they register before listen()
+  await app.register(authRoutes,        { prefix: '/api/auth' });
+  await app.register(minerRoutes,       { prefix: '/api/miner' });
+  await app.register(shopRoutes,        { prefix: '/api/shop' });
+  await app.register(referralRoutes,    { prefix: '/api/referral' });
+  await app.register(leaderboardRoutes, { prefix: '/api/leaderboard' });
+  await app.register(dailyRoutes,       { prefix: '/api/daily' });
+  await app.register(tonRoutes,         { prefix: '/api/ton' });
+  await app.register(adminRoutes,       { prefix: '/api/admin' });
 
   app.get('/health', async () => ({ status: 'ok', time: new Date().toISOString() }));
 
+  // Print all registered routes for debugging
+  app.ready(() => {
+    console.log('📋 Registered routes:');
+    console.log(app.printRoutes());
+  });
+
   const port = Number(process.env.PORT) || 3001;
   await app.listen({ port, host: '0.0.0.0' });
-  console.log(`✅ Server started on port ${port}`);
+  console.log(`✅ Server running on port ${port}`);
 
   startPassiveIncomeJob();
 
