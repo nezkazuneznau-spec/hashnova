@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { prisma } from '../index';
 import { telegramAuthMiddleware } from '../middleware/telegram';
-import { DAILY_REWARDS } from '@hashnova/shared';
+import { DAILY_REWARDS } from '../shared';
 
 // ─── DAILY ────────────────────────────────────────────────────────────────
 export default async function dailyRoutes(app: FastifyInstance) {

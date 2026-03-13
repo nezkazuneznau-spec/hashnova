@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { prisma } from '../index';
 import { telegramAuthMiddleware } from '../middleware/telegram';
-import { calcPendingIncome, xpForLevel } from '@hashnova/shared';
+import { calcPendingIncome, xpForLevel } from '../shared';
 
 export default async function minerRoutes(app: FastifyInstance) {
   // GET /api/miner/status — get current balance + pending income

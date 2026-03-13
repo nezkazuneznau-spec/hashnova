@@ -12,7 +12,6 @@
     "prisma:studio": "prisma studio"
   },
   "dependencies": {
-    "@hashnova/shared": "*",
     "@prisma/client": "^5.8.1",
     "@ton/ton": "^13.9.0",
     "fastify": "^4.25.2",

@@ -1,6 +1,6 @@
 import { useStore } from '../store';
 import { minerAPI, dailyAPI } from '../api';
-import { DAILY_REWARDS, xpForLevel } from '@hashnova/shared';
+import { DAILY_REWARDS, xpForLevel } from '../shared';
 import { useState } from 'react';
 
 export default function HomePage() {

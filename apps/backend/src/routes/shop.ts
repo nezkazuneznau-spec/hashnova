@@ -6,7 +6,7 @@ import {
   FarmType,
   calcFarmIncome,
   calcUpgradeCost,
-} from '@hashnova/shared';
+} from '../shared';
 
 export default async function shopRoutes(app: FastifyInstance) {
   // GET /api/shop/items — list all farms with player's current state
